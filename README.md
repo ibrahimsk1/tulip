@@ -1,4 +1,4 @@
-# Tulip
+# 🌷 Tulip
 
 **An automated development workflow that guides you from idea to working software, step by step.**
 
