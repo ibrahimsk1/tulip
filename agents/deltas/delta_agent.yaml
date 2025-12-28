@@ -1,0 +1,183 @@
+id: delta_agent
+name: Delta Extraction & Critique Agent
+purpose: >
+  Maintain the accuracy of the delta map (agents/deltas/<pdd>_v*_to_v*.yaml)
+  by iteratively extracting changes from the Product Design Document (PDD), proposing deltas, and
+  critiquing its own reasoning through a structured journal.
+
+# --------------------------------------------------------------------------
+# STATIC INPUTS / OUTPUTS (same for every invocation)
+# --------------------------------------------------------------------------
+inputs:
+  - v0/<pdd>_<project>_v0.md
+  - v*/<pdd>_<project>_v*.md
+  - agents/deltas/<pdd>_v*_to_v*.yaml
+  - agents/deltas/delta_journal.md
+
+outputs:
+  - agents/deltas/<pdd>_v*_to_v*.yaml
+  - agents/deltas/delta_journal.md
+
+# --------------------------------------------------------------------------
+# RUNTIME CONTRACT (per invocation)
+# --------------------------------------------------------------------------
+invocation_contract:
+  inputs_runtime:
+    mode:
+      description: >
+        Agent thinking mode:
+        - "extract": initial delta generation or discovery of new changes.
+        - "refine": improve descriptions, split/merge deltas.
+        - "critique": adversarial attack on previous reasoning.
+      allowed: [extract, refine, critique]
+
+    target_reasoning:
+      description: >
+        In critique mode: the reasoning block to attack.
+        Provided as a YAML fragment from delta_journal.md.
+      required_if_mode: critique
+
+  outputs_runtime:
+    delta_file:
+      description: Updated state of <pdd>_v*_to_v*.yaml.
+    journal_append:
+      description: >
+        YAML-framed reasoning or critique block to append to
+        agents/deltas/delta_journal.md.
+
+# --------------------------------------------------------------------------
+# LIFECYCLE
+# --------------------------------------------------------------------------
+lifecycle:
+  extract_mode:
+    name: Extract Changes From Product Design Document
+    steps:
+      - "EX1. Load PDD v0, PDD v1, existing delta file."
+      - "EX2. Compute conceptual diff between versions:
+            look for added/changed/removed features, mechanics, systems,
+            entities, modes, flows, rules, UI interactions, or protocol changes."
+      - "EX3. For each meaningful change:
+            - generate a delta_id (e.g. Δ-3.2-feature-add)
+            - type: ADD | MODIFY | REMOVE | RESCOPE
+            - importance: HIGH | MEDIUM | LOW
+            - pdd_refs: list of section identifiers
+            - status: UNREVIEWED
+            - arch_status: UNRESOLVED (architect loop will handle it later)."
+      - "EX4. Avoid overwriting existing deltas; append or refine only the new ones."
+      - "EX5. Write a 'delta_reasoning' block to agents/deltas/delta_journal.md
+            listing:
+              * pdd sections scanned
+              * assertions (What did I believe changed?)
+              * deltas_proposed"
+      - "EX6. Save updated delta YAML file."
+
+  refine_mode:
+    name: Improve or Correct Existing Deltas
+    steps:
+      - "RF1. Load existing delta file + recent journal."
+      - "RF2. Improve clarity of deltas:
+            split broad entries, merge duplicates, fix vague wording."
+      - "RF3. Mark deltas as REVIEWED when they clearly map to PDD text."
+      - "RF4. Write a 'delta_reasoning' refinement block to the journal."
+      - "RF5. Update delta YAML accordingly."
+
+  critique_mode:
+    name: Adversarial Check of Reasoning
+    steps:
+      - "CR1. Load target_reasoning block + PDD v1 + delta file."
+      - "CR2. Check for:
+            * missing deltas (PDD section with no delta covering it)
+            * invalid deltas (misrepresent PDD)
+            * over-broad deltas
+            * redundant or overlapping deltas"
+      - "CR3. For every issue found, generate findings and
+            *suggested_fix* instructions:
+              - ADD_DELTA
+              - MARK_INVALID
+              - SPLIT_DELTA
+              - MERGE_DELTAS
+              - UPDATE_DESCRIPTION"
+      - "CR4. Emit a 'delta_critique' block with findings."
+      - "CR5. Apply FIXES to delta file where unambiguous,
+            leave others for next refinement pass."
+
+# --------------------------------------------------------------------------
+# FORMATS (MINIMAL)
+# --------------------------------------------------------------------------
+format:
+  reasoning_block:
+    description: "How the agent records thought per iteration."
+    example: |
+      ```yaml
+      delta_reasoning:
+        id: "DR-2025-11-22-001"
+        mode: "extract"
+        scope: "§3.2"
+        pdd_sections_read:
+          - "§3.2 Feature Name"
+        assertions:
+          - id: "A-01"
+            statement: "PDD v1 introduces a new feature."
+            evidence:
+              file: "v1/<pdd>_<project>_v1.md"
+              location: "#3.2"
+        deltas_proposed:
+          - delta_id: "Δ-3.2-feature-add"
+            type: "ADD"
+            description: "Added feature description."
+            pdd_refs: ["§3.2"]
+            importance: "HIGH"
+            status: "UNREVIEWED"
+            arch_status: "UNRESOLVED"
+      ```
+
+  critique_block:
+    description: "How the agent attacks reasoning."
+    example: |
+      ```yaml
+      delta_critique:
+        id: "DC-2025-11-22-001"
+        target_reasoning_id: "DR-2025-11-22-001"
+        findings:
+          - id: "F-01"
+            type: "MISSING_DELTA"
+            description: "Feature cancellation is described in PDD §3.2
+                          but not in reasoning or deltas."
+            severity: "HIGH"
+            suggested_fix:
+              action: "ADD_DELTA"
+              new_delta:
+                delta_id: "Δ-3.2-feature-cancel"
+                type: "ADD"
+                description: "Users can cancel feature operation."
+                pdd_refs: ["§3.2"]
+                importance: "HIGH"
+                status: "UNREVIEWED"
+                arch_status: "UNRESOLVED"
+      ```
+
+# --------------------------------------------------------------------------
+# DECISION RULES
+# --------------------------------------------------------------------------
+decision_framework:
+  when_to_add_delta:
+    - "A PDD section introduces a new feature/mechanic not represented in deltas."
+    - "A PDD rule changes or gets removed."
+
+  when_to_invalidate_delta:
+    - "Delta description contradicts PDD."
+    - "Delta is too broad or too vague to be useful."
+
+  when_to_split_delta:
+    - "Multiple features/mechanics or systems mixed in one entry."
+
+  when_to_merge_deltas:
+    - "Two deltas describe the same conceptual change."
+
+  when_to_mark_reviewed:
+    - "Delta precisely reflects PDD text and boundaries."
+
+notes:
+  - "Delta agent never modifies TDD/SPEC/API."
+  - "PDD is always the source of truth; the delta file is derived."
+  - "Architect agent uses delta file for traceability but may propose new deltas if needed."

@@ -1,0 +1,57 @@
+id: implementation_agent
+name: Implementation Agent (CUP)
+purpose: Execute CUs via D-loops and land code to d-loop development branch
+version: "{version}"  # e.g., "v1", "v2" - set dynamically
+inputs:
+  - development_{version}/<loop>/<slug>/{version}-{loop}-plan.md
+  - {version}/devplan_<project>_{version}.md
+  - {version}/tdd_<project>_{version}.md
+  - /**/**/API.md
+  - /**/**/SPEC.md
+  - utils/test_lables.md
+outputs:
+  - development_{version}/<loop>/<slug>/cu_<cu-slug>/<cu-slug>-implementation_plan.md
+
+retry_logic:
+  max_test_failures: 20  # Maximum consecutive test failures before stopping
+  If max_test_failures reached: stop, report issue, mark CU status as BLOCKED
+
+lifecycle:
+  loop:
+    - until all CUs in {version}-{loop}-plan.md have status DONE
+    - break if max_test_failures reached
+  iteration_steps:
+    - FIRST CREATE To-do from steps and ALWAYS CHECK YOUR STEPS AND TO-DO LIST
+    - Read {version}-{loop}-plan.md to identify the d-loop development branch (check for "## Development Branch" section)
+    - Create branch from d-loop development branch which defined at {version}-{loop}-plan.md
+    - Read {version}-{loop}-plan.md, tdd_<project>_{version}.md and related SPEC.md or API.md files
+    - Create <cu-slug>-implementation_plan.md with tasks, allowlists, target tests, and evidence fields
+    - TEST-FIRST: add or update tests labeled with the CU's loop proof requirements - Run the smallest suites covering the change (tests you added or affected)
+    - APPLY: implement minimal code within allowlists to satisfy new/updated tests
+    - "VERIFY: run labeled suites, record command + result in evidence log. If tests pass, continue to next step. If tests fail, increment failure counter and retry from APPLY step (up to retry limits)"
+    - Update {version}-{loop}-plan.md: set CU to DONE, include evidence links, and select a new single NEXT
+    - Commit, open PR with template targeting d-loop development branch and merge to that branch
+    - Switch back to d-loop development branch and pull latest changes
+
+pr_template: |
+  Title: CU: <short-behavior>
+
+  Goal: <what changes for the user/system>
+
+  Loop: <d0..d8>
+
+  Acceptance checks:
+  - [ ] <observable-1>
+  - [ ] <observable-2>
+
+  Tests-first plan:
+  - Unit: <list>
+  - Integration: <when adapters touched>
+  - Contract/E2E: <only if required by loop>
+
+  Files-to-touch ():
+  - <path>
+
+  Evidence:
+  - Tests: <command + summary>
+  - Notes: <observability, contract diffs, etc>

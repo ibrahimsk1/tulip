@@ -1,0 +1,255 @@
+version: "gdd_v0_to_v1"
+generated_at: "2025-11-22T00:00:00Z"
+
+source:
+  old_gdd: "v0/gdd_orbitalrush_v0.md"
+  new_gdd: "v1/gdd_orbitalrush_v1.md"
+
+deltas:
+  - delta_id: "Δ-1-goal-multiplayer"
+    type: "MODIFY"
+    description: "Goal changed from single-player authoritative server to multiplayer with room-based matchmaking, larger world with multiple planets, camera following, world wraparound, and radar visualization"
+    gdd_refs: ["§1"]
+    importance: "HIGH"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-2-core-loop-multiplayer-flow"
+    type: "MODIFY"
+    description: "Core loop extended: (1) main menu, (2) create/join room by code, (3) lobby wait (min 2, max 8 players), (4) match start with multiple planets, (5) camera follows ship, world wraps, (6) radar shows all entities, (7) per-player win/lose, (8) return to lobby/menu"
+    gdd_refs: ["§2"]
+    importance: "HIGH"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-3-multiplayer-support"
+    type: "ADD"
+    description: "Multiplayer support for 2-8 players per room"
+    gdd_refs: ["§3"]
+    importance: "HIGH"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-3-room-system"
+    type: "ADD"
+    description: "Room system: create room (generates 6-character alphanumeric code), join by code, room lobby with player list"
+    gdd_refs: ["§3"]
+    importance: "HIGH"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-3-main-menu"
+    type: "ADD"
+    description: "Main menu entry point with 'Create Room' and 'Join Room' options (v0 connected directly to game)"
+    gdd_refs: ["§3"]
+    importance: "HIGH"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-3-larger-world"
+    type: "MODIFY"
+    description: "World expanded from soft boundaries to 2000 m × 2000 m bounded world"
+    gdd_refs: ["§3"]
+    importance: "MEDIUM"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-3-multiple-planets"
+    type: "MODIFY"
+    description: "Replaced single sun with 3-5 planets, each with gravity wells"
+    gdd_refs: ["§3"]
+    importance: "HIGH"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-4-restart-removed"
+    type: "REMOVE"
+    description: "Restart/respawn functionality removed from v1 (explicitly excluded in scope)"
+    gdd_refs: ["§4"]
+    importance: "LOW"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-5-restart-control-removed"
+    type: "REMOVE"
+    description: "R key restart control removed (no longer in controls section)"
+    gdd_refs: ["§5"]
+    importance: "LOW"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-5-esc-to-menu"
+    type: "ADD"
+    description: "ESC key returns to menu (leaves room) - new control in v1"
+    gdd_refs: ["§5"]
+    importance: "MEDIUM"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-6-world-bounds-wraparound"
+    type: "MODIFY"
+    description: "World bounds changed from soft boundaries to 2000 m × 2000 m rectangular with wraparound: pos.x = mod(pos.x + WORLD_WIDTH/2, WORLD_WIDTH) - WORLD_WIDTH/2 (same for y)"
+    gdd_refs: ["§6"]
+    importance: "MEDIUM"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-6-gravity-multiple-planets"
+    type: "MODIFY"
+    description: "Gravity changed from single sun to multiple planets (3-5 per match), each with inverse-square gravity well clamped at a_max"
+    gdd_refs: ["§6"]
+    importance: "HIGH"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-6-collision-ship-vs-planet"
+    type: "MODIFY"
+    description: "Collision changed from ship vs sun (lose) to ship vs planet (lose condition, respawn or match end per rules)"
+    gdd_refs: ["§6"]
+    importance: "MEDIUM"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-6-collision-ship-vs-ship"
+    type: "ADD"
+    description: "Ship vs ship collision: pass-through (no collision in v1, ships pass through each other)"
+    gdd_refs: ["§6"]
+    importance: "LOW"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-6-physics-constants-g"
+    type: "MODIFY"
+    description: "Gravitational constant changed from G = 6.0e-3 (v0) to G = 1.0 (v1, game-scale)"
+    gdd_refs: ["§6"]
+    importance: "MEDIUM"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-6-physics-constants-amax"
+    type: "MODIFY"
+    description: "Maximum acceleration changed from a_max = 35 m/s² (v0) to a_max = 100.0 m/s² (v1)"
+    gdd_refs: ["§6"]
+    importance: "MEDIUM"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-6-pallet-pickup-radius"
+    type: "MODIFY"
+    description: "Pallet pickup radius increased from 1.2 m (v0) to 15.0 m (v1)"
+    gdd_refs: ["§6"]
+    importance: "MEDIUM"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-6-pallet-count-scaling"
+    type: "MODIFY"
+    description: "Pallet count changed from fixed 3-5 (v0) to 8-12 per match (v1, scales with player count)"
+    gdd_refs: ["§6"]
+    importance: "MEDIUM"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-6-entity-planet"
+    type: "ADD"
+    description: "Planet entity specification: radius 30-80 m (varied), mass 500-2000 game units (varied), positions distributed across world (minimum 200 m apart)"
+    gdd_refs: ["§6"]
+    importance: "HIGH"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-7-entity-room"
+    type: "ADD"
+    description: "Room entity added: roomCode (6-character alphanumeric), players[] array, state (lobby|playing), hostPlayerID"
+    gdd_refs: ["§7"]
+    importance: "HIGH"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-7-entity-sun-to-planet"
+    type: "MODIFY"
+    description: "Entity changed from Sun (single, static: pos, radius, mass) to Planet (multiple: id, pos, radius, mass)"
+    gdd_refs: ["§7"]
+    importance: "HIGH"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-8-networking-room-messages"
+    type: "ADD"
+    description: "Room management messages (client→server): createRoom (returns roomCode), joinRoom (roomCode), leaveRoom, startMatch (host only, requires min 2 players)"
+    gdd_refs: ["§8"]
+    importance: "HIGH"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-8-networking-room-updates"
+    type: "ADD"
+    description: "Room state updates (server→client): roomState (roomCode, players[], state, hostId), playerJoined, playerLeft, matchStarted, matchEnded (optional, winnerId)"
+    gdd_refs: ["§8"]
+    importance: "HIGH"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-8-networking-input-format"
+    type: "MODIFY"
+    description: "Input message format changed: v0 uses {\"seq\": number, \"thrust\": 0..1, \"turn\": -1..1} (no type field), v1 uses {\"t\":\"input\",\"seq\":u32,\"thrust\":0..1,\"turn\":-1..1} (adds \"t\":\"input\" field for message type identification, standardizes all messages to have type field)"
+    gdd_refs: ["§8"]
+    importance: "MEDIUM"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-8-networking-snapshot-format"
+    type: "MODIFY"
+    description: "Snapshot format changed: single ship object → ships array, sun object → planets array, added worldBounds {width, height}, added myShipId (u32)"
+    gdd_refs: ["§8"]
+    importance: "HIGH"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-9-ui-main-menu"
+    type: "ADD"
+    description: "Main menu UI: title 'Orbital Rush', 'Create Room' button (generates code, transitions to lobby), 'Join Room' button with input field for room code"
+    gdd_refs: ["§9"]
+    importance: "HIGH"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-9-ui-room-lobby"
+    type: "ADD"
+    description: "Room lobby UI: room code displayed prominently (copyable), player list showing all connected players, 'Start Match' button (host only, disabled if < 2 players), 'Leave Room' button, waiting message if not host"
+    gdd_refs: ["§9"]
+    importance: "HIGH"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-9-ui-hud-player-indicator"
+    type: "ADD"
+    description: "HUD player name/ID indicator added to in-game HUD (alongside energy bar and pallets counter)"
+    gdd_refs: ["§9"]
+    importance: "LOW"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-10-camera-follow"
+    type: "ADD"
+    description: "Camera system: follows player's ship smoothly with lerp (factor ~0.1-0.15 per frame), stays within world bounds (no wraparound for camera), fixed viewport size with fixed zoom level"
+    gdd_refs: ["§10"]
+    importance: "MEDIUM"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-11-radar-system"
+    type: "ADD"
+    description: "Radar system: top-right corner (200×200 px fixed size), coordinate mapping (world → radar pixels), shows world bounds (rectangle outline), planets (circles, size proportional to radius, color-coded by mass), ships (small dots, color-coded by player ID), own ship (highlighted, different color/size), active pallets (small dots, distinct color), full world view (2000 m × 2000 m), updates every frame"
+    gdd_refs: ["§11"]
+    importance: "MEDIUM"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"
+
+  - delta_id: "Δ-12-deployment-multi-container"
+    type: "MODIFY"
+    description: "Deployment changed from single container (runs Go server and serves client assets) to multi-container setup (client + server separate), in-memory room management (no persistence in v1)"
+    gdd_refs: ["§12"]
+    importance: "MEDIUM"
+    status: "REVIEWED"
+    arch_status: "UNRESOLVED"

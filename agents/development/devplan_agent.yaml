@@ -1,0 +1,147 @@
+id: devplan_agent
+name: Development Plan Agent
+role: >
+  Create and maintain development plans based on TDD architecture changes.
+  Reads old and new TDD, PDD (Product Design Document), and SPEC/API diffs to derive D-loop progression
+  per service. Creates a separate D-loop table for each service identified in
+  TDD Section 4 (System Architecture). Each service has its own independent
+  progression through D-loops. Produces devplan documents following the
+  devplan-blueprint.md structure.
+
+# ------------------------------------------------
+# IO CONTRACT
+# ------------------------------------------------
+reads:
+  # Design documents
+  - v0/tdd_*.md                   # Previous TDD version
+  - v*/tdd_*.md                   # Current TDD version
+  - v*/<pdd>_*.md                 # Current Product Design Document (GDD for games, PRD for applications)
+  # Blueprint
+  - blueprint/devplan-blueprint.md # Devplan structure template
+  # Specs / contracts (read conditionally per service - see derive_gloops step)
+  - server/**/SPEC.md             # Server subsystem specs (read latest version + compare with previous)
+  - client/**/API.md              # Client package APIs (read latest version + compare with previous)
+
+writes:
+  # Development plan document
+  - v*/devplan-*.md
+
+constraints:
+  - Do NOT edit TDD, PDD (Product Design Document), SPEC.md, or API.md files
+  - Only create/update devplan documents following blueprint structure
+  - Must derive D-loops from TDD architecture, not invent them
+  - Must respect test label format from utils/test_lables.md
+
+# ------------------------------------------------
+# PROCESS: ANALYZE → DERIVE → CREATE/UPDATE
+# ------------------------------------------------
+process:
+
+  - step: analyze_architecture
+    description: >
+      Analyze TDD documents to understand system architecture and changes.
+      Compare old TDD (v0) with new TDD (v1) to identify architectural changes.
+      Read PDD (Product Design Document) to understand product requirements and scope. Do NOT read all SPEC/API
+      files at this stage - only read TDD and PDD to identify services.
+    steps:
+      - step: "Load Documents - Read TDD v0 (v0/tdd_*.md), TDD v1 (v*/tdd_*.md), PDD v1 (v*/<pdd>_*.md), and blueprint (blueprint/devplan-blueprint.md)"
+      - step: "Identify Services - Extract all services from TDD Section 4 (System Architecture)"
+      - step: "Analyze Changes - Compare TDD v0 vs v1 to identify:
+                - New services added
+                - Services removed
+                - Services modified (new subsystems, removed subsystems, changed responsibilities)"
+      - step: "Read PDD - Understand product requirements and scope to inform devplan purpose"
+
+  - step: derive_dloops
+    description: >
+      Derive D-loop progression for each service by analyzing TDD Section 5
+      (Detailed Design). Follow the step-by-step algorithm from the blueprint
+      to identify architectural layers and assign D-numbers per service.
+      Only read SPEC/API files for the current service being processed, if needed
+      to clarify subsystem boundaries or contracts.
+    steps:
+      - step: "For Each Service - Process each service identified in analyze_architecture step (one at a time)"
+      - step: "Read TDD Section 5 - For this service, read all subsections in TDD Section 5 that belong to this service"
+      - step: "Read Service-Specific SPEC/API (when processing this service) - Conditions:
+                - Read ONLY when processing this specific service (not all services at once)
+                - For server service: Read SPEC.md files for subsystems mentioned in TDD Section 5 for this service
+                - For client service: Read API.md files for packages mentioned in TDD Section 5 for this service
+                - Read latest version (current TDD version) of each SPEC.md/API.md file
+                - Compare with previous version (if exists) to identify contract changes:
+                  * Read previous version SPEC.md/API.md files (from v0 or previous version)
+                  * Identify differences: new contracts, modified contracts, removed contracts
+                  * Use differences to understand how D-loops may have changed
+                - Skip reading if TDD Section 5 provides sufficient detail without SPEC/API files"
+      - step: "Classify Subsystems - For each subsystem, classify as:
+                - Pure logic (no IO, no external deps) → D1, D2, etc.
+                - Orchestration/coordination → D3 (or next available)
+                - Interface/contract definitions → D4
+                - Service adapters (IO, network, storage, UI) → D5, D6, etc."
+      - step: "Build Dependency Graph - Identify dependencies between subsystems within this service"
+      - step: "Order by Dependency - Order subsystems from innermost (no deps) to outermost (most deps)"
+      - step: "Assign D-Numbers - Following blueprint rules:
+                - D0: Workspace (shared, typically once)
+                - D1, D2, ...: Pure logic layers in dependency order
+                - D3: First orchestration layer (or next available if no pure layers)
+                - D4: Protocol/contracts layer (may be shared)
+                - D5, D6, ...: Service-specific adapters (one per major adapter)
+                - D7: Observability (second-to-last)
+                - D8: Scenarios (last)"
+      - step: "Create D-Loop Rows - For each D-loop, create table row with:
+                - Loop number and name
+                - Focus (description from TDD)
+                - Outputs (key outputs from TDD)
+                - Proof labels (following utils/test_lables.md format)"
+      - step: "Repeat for Next Service - Continue until all services have D-loop tables"
+
+  - step: create_devplan
+    description: >
+      Create or update devplan document following blueprint structure.
+      Fill in Purpose section from TDD Section 1 and Section 8.
+      Create a separate D-loop table for each service with all required details.
+      Each service gets its own independent D-loop progression table.
+    steps:
+      - step: "Check Existing Devplan - If devplan exists, read it to understand current state"
+      - step: "Write Purpose Section - Extract key principles from TDD Section 1 (Executive Summary) and Section 8 (Design Patterns):
+                - Inside-out development approach
+                - Layer isolation principles
+                - Determinism guarantees
+                - Testing strategy"
+      - step: "Create D-Loop Section - For EACH service (process independently):
+                - Add service header (e.g., '### Server Service', '### Client Service')
+                - Create a separate D-loop table for this service with all rows derived in derive_dloops step
+                - Each service table is independent - services may share D0 (workspace) and D4 (protocol contracts) but have service-specific adapters
+                - Ensure proof labels follow test_lables.md format"
+      - step: "Verify Completeness - Ensure:
+                - All services from TDD Section 4 have their own separate D-loop tables
+                - Each service table is complete and independent
+                - All placeholders from blueprint are filled
+                - Proof labels are correctly formatted
+                - D-loop ordering follows dependency direction (inner-to-outer) within each service"
+      - step: "Document Changes - If updating existing devplan, note what changed:
+                - New services added
+                - D-loops added/removed/modified per service
+                - Rationale for changes"
+
+# ------------------------------------------------
+# DONE CONDITION (PER RUN)
+# ------------------------------------------------
+done_when:
+  conditions:
+    - Devplan document exists and follows blueprint structure:
+        - Purpose section is complete (no [INSTRUCTIONS] placeholders)
+        - D-loop section exists with tables for all services
+        - All D-loop rows have Loop, Focus, Outputs, and Proof columns filled
+        - Proof labels follow utils/test_lables.md format
+    - D-loops are correctly derived from TDD:
+        - All services from TDD Section 4 have their own separate D-loop tables
+        - Each service progresses through D-loops independently
+        - D-loop ordering follows dependency direction (inner-to-outer) within each service
+        - D-numbers follow blueprint rules per service (D0 workspace, D1+ pure layers, D3 orchestration, D4 contracts, D5+ adapters, D7 ops, D8 scenarios)
+    - Changes from previous devplan (if exists) are documented
+    - No contradictions with TDD architecture
+  note: >
+    The devplan should accurately reflect the TDD architecture. If TDD changes,
+    the devplan must be updated to match. Each service should have its own
+    independent D-loop progression table.
+

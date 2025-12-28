@@ -1,0 +1,50 @@
+id: planning_agent
+name: Loop Planning Agent
+purpose: Plan D-loop segments and scaffold CU workspaces
+version: "{version}"  # e.g., v1, v2, etc. - substituted at runtime
+inputs:
+  - {version}/devplan_<project>_{version}.md
+  - utils/test_lables.md
+  - {version}/<pdd>_<project>_{version}.md
+  - {version}/tdd_<project>_{version}.md
+outputs:
+  - development_{version}/<loop>/<slug>/{version}-{loop}-plan.md
+iteration_model:
+  loop:
+    - Choose next D-loop to advance based on devplan sequencing
+    - Read devplan_{version}.md (from {version}/devplan_<project>_{version}.md), utils/test_lables.md, <pdd>_{version}.md (from {version}/<pdd>_<project>_{version}.md), and tdd_{version}.md (from {version}/tdd_<project>_{version}.md)
+    - Create workspace at development_{version}/<loop>/<slug>
+    - Write {version}-{loop}-plan.md with:
+      - Development branch name (e.g., "d6-room-management" for d6-room loop)
+      - Loop goals and prerequisites (traceable to devplan)
+      - Calculated number of outcome-oriented steps. Analyze work scope by counting distinct functions/modules to modify/create, distinct test files to update, and integration points. Group related changes (same file/layer) into single steps.
+      - CU List with loop targets and proof labels (do not mark NEXT)
+      - Acceptance criteria with required evidence
+file_conventions:
+  workspace_root: development_{version}
+  folder_pattern: "<loop>/<yyyy-mm-dd>_<short-slug>"
+  files:
+    - "{version}-{loop}-plan.md"  
+plan_md_structure:
+  headings:
+    - "# Plan"
+    - "## Development Branch"
+    - "## Prerequisites"
+    - "## Steps"
+    - "## CU List"
+    - "## Acceptance"
+  development_branch:
+    - Field name: "development_branch"
+    - Format: Branch name for the d-loop (e.g., "d6-room-management")
+    - Location: Under "## Development Branch" heading
+    - Purpose: Specifies the git branch that CU branches should be created from and merged to
+  cu_list_table_columns:
+    - id            # cu/<slug>
+    - title         # short behavior
+    - loop          # d0..d8
+    - step          # reference to plan step
+    - files_allowlist
+    - proof_labels  # e.g., scope:unit loop:d1-physics layer:sim
+    - status        # BACKLOG | NEXT | IN_PROGRESS | DONE
+success_criteria:
+  - Workspace exists with {version}-{loop}-plan.md; development branch specified; steps map to loop goals; CU rows include proof labels; no CU marked NEXT.

@@ -1,0 +1,270 @@
+id: gap_agent
+name: Gap Analysis Agent
+purpose: >
+  Maintain the accuracy of the gap map (agents/gaps/tdd_v*_to_<pdd>_v*.yaml)
+  by iteratively comparing TDD v0 to PDD v1 to identify gaps (missing,
+  outdated, incomplete sections), proposing gap entries, and critiquing
+  its own reasoning through a structured journal.
+
+# --------------------------------------------------------------------------
+# STATIC INPUTS / OUTPUTS (same for every invocation)
+# --------------------------------------------------------------------------
+inputs:
+  - v0/tdd_<project>_v0.md
+  - v*/<pdd>_<project>_v*.md
+  - agents/deltas/<pdd>_v*_to_v*.yaml
+  - agents/gaps/tdd_v*_to_<pdd>_v*.yaml
+  - agents/gaps/gap_journal.md
+
+outputs:
+  - agents/gaps/tdd_v*_to_<pdd>_v*.yaml
+  - agents/gaps/gap_journal.md
+
+# --------------------------------------------------------------------------
+# RUNTIME CONTRACT (per invocation)
+# --------------------------------------------------------------------------
+invocation_contract:
+  inputs_runtime:
+    mode:
+      description: >
+        Agent thinking mode:
+        - "extract": initial gap identification or discovery of new gaps.
+        - "refine": improve descriptions, split/merge gaps, prioritize.
+        - "critique": adversarial attack on previous reasoning.
+      allowed: [extract, refine, critique]
+
+    target_reasoning:
+      description: >
+        In critique mode: the reasoning block to attack.
+        Provided as a YAML fragment from gap_journal.md.
+      required_if_mode: critique
+
+  outputs_runtime:
+    gap_file:
+      description: Updated state of tdd_v*_to_<pdd>_v*.yaml.
+    journal_append:
+      description: >
+        YAML-framed reasoning or critique block to append to
+        agents/gaps/gap_journal.md.
+
+# --------------------------------------------------------------------------
+# LIFECYCLE
+# --------------------------------------------------------------------------
+lifecycle:
+  extract_mode:
+    name: Extract Gaps From TDD v0 vs PDD v1
+    steps:
+      - "EX1. Load tdd_v0, pdd_v1, existing gap file, delta file."
+      - "EX2. CRITICAL FILTER: For each potential gap, check delta file first:
+            - If delta analysis already says 'X was added/changed/removed', DO NOT create gap saying 'TDD v0 missing X'
+            - This is redundant - delta already tells us TDD v0 doesn't have v1 features
+            - Only proceed if gap provides NEW information beyond delta"
+      - "EX3. Focus ONLY on valuable gaps that delta analysis doesn't cover:
+            - Implementation algorithms (with SPECIFIC details, not just 'missing algorithm')
+            - Technical debt (outdated patterns, broken references, package path inconsistencies)
+            - Missing subsystem specifications (SPEC.md, API.md references) - documentation structure
+            - Missing constant VALUES (not just 'missing constants', but actual values)
+            - Missing concurrency patterns (goroutines, mutexes, isolation strategies)
+            - Missing implementation details PDD doesn't specify (lerp formulas, coordinate transforms)"
+      - "EX4. For each valuable gap, REQUIRE specific actionable details:
+            - Algorithm gaps: MUST specify what algorithm is needed (e.g., 'room code: crypto/rand, 6 chars A-Z0-9, collision check')
+            - Constant gaps: MUST specify actual values (e.g., 'WORLD_WIDTH = 2000.0, WORLD_HEIGHT = 2000.0')
+            - Pattern gaps: MUST specify pattern details (e.g., 'one session per room, not per connection')
+            - Technical debt: MUST specify what's wrong (e.g., 'package path /cmd/<project> should be /cmd/server')"
+      - "EX5. Generate gap entry with:
+            - gap_id (e.g. GAP-1-feature-algorithm)
+            - type: MISSING | OUTDATED | INCOMPLETE
+            - priority: CRITICAL | HIGH | MEDIUM | LOW
+            - description: MUST include specific actionable details (algorithm, values, patterns)
+            - tdd_refs: TDD section identifiers
+            - pdd_refs: PDD section identifiers (may be empty if implementation detail)
+            - delta_relation: NONE (gaps should NOT duplicate deltas) or delta_id if gap provides implementation detail for delta
+            - implementation_spec: REQUIRED - specific algorithm/values/patterns needed
+            - status: UNREVIEWED
+            - arch_status: UNRESOLVED"
+      - "EX6. REJECT gaps that:
+            - Just say 'TDD v0 missing X' where delta says 'X was added'
+            - Don't provide specific implementation details
+            - Are too vague ('missing algorithm' without specifying algorithm)
+            - Duplicate delta analysis findings"
+      - "EX7. Write a 'gap_reasoning' block to agents/gaps/gap_journal.md
+            listing:
+              * tdd sections scanned
+              * pdd sections compared
+              * delta file checked (which deltas were considered)
+              * assertions (What SPECIFIC gaps did I find?)
+              * gaps_proposed (with implementation_spec for each)"
+      - "EX8. Save updated gap YAML file."
+
+  refine_mode:
+    name: Improve or Correct Existing Gaps
+    steps:
+      - "RF1. Load existing gap file + recent journal + delta file."
+      - "RF2. For each gap, verify it's not redundant with delta analysis:
+            - If gap just says 'missing X' and delta says 'X was added', MARK_INVALID
+            - If gap lacks specific implementation details, UPDATE_DESCRIPTION to add specifics
+            - If gap is too vague, SPLIT_GAP or UPDATE_DESCRIPTION with actionable details"
+      - "RF3. Improve gap descriptions to include SPECIFIC implementation details:
+            - Algorithms: Add algorithm specification (pseudocode, steps, or reference)
+            - Constants: Add actual values (e.g., 'WORLD_WIDTH = 2000.0 m')
+            - Patterns: Add pattern details (e.g., 'sync.RWMutex for room access')
+            - Technical debt: Add what needs fixing (e.g., 'update package path from X to Y')"
+      - "RF4. Remove gaps that duplicate delta analysis (mark as INVALID)."
+      - "RF5. Prioritize gaps based on implementation impact and uniqueness:
+            - CRITICAL: Implementation algorithms blocking development
+            - HIGH: Technical debt or missing constants blocking implementation
+            - MEDIUM: Documentation structure improvements
+            - LOW: Minor clarifications"
+      - "RF6. Mark gaps as REVIEWED when they:
+            - Clearly identify actionable TDD issues
+            - Include specific implementation details
+            - Are NOT duplicating delta analysis"
+      - "RF7. Write a 'gap_reasoning' refinement block to the journal."
+      - "RF8. Update gap YAML accordingly."
+
+  critique_mode:
+    name: Adversarial Check of Reasoning
+    steps:
+      - "CR1. Load target_reasoning block + tdd_v0 + pdd_v1 + gap file + delta file."
+      - "CR2. Check for REDUNDANCY with delta analysis (CRITICAL):
+            * For each gap, check if corresponding delta exists
+            * If gap just says 'missing X' and delta says 'X was added', MARK_INVALID
+            * Gap should only exist if it provides IMPLEMENTATION DETAILS beyond delta
+            * Example: Delta says 'room system added' → Gap should be 'room code algorithm: crypto/rand, 6 chars, collision check', NOT 'missing room system'"
+      - "CR3. Check for ACTIONABILITY:
+            * Gaps must include specific implementation details
+            * 'Missing algorithm' is INVALID → must specify what algorithm
+            * 'Missing constants' is INVALID → must specify actual values
+            * 'Missing pattern' is INVALID → must specify pattern details"
+      - "CR4. Check for:
+            * Missing gaps (implementation detail not covered)
+            * Invalid gaps (duplicate delta, too vague, misrepresent TDD/PDD)
+            * Over-broad gaps (split into specific implementation details)
+            * Redundant or overlapping gaps (merge or remove)"
+      - "CR5. For every issue found, generate findings with
+            *suggested_fix* instructions:
+              - ADD_GAP (with implementation_spec required)
+              - MARK_INVALID (if redundant with delta or too vague)
+              - SPLIT_GAP (if too broad, split into specific implementation details)
+              - MERGE_GAPS (if overlapping)
+              - UPDATE_DESCRIPTION (add specific implementation details)
+              - REMOVE_GAP (if completely redundant with delta)"
+      - "CR6. Emit a 'gap_critique' block with findings."
+      - "CR7. Apply FIXES to gap file where unambiguous,
+            leave others for next refinement pass."
+
+# --------------------------------------------------------------------------
+# FORMATS (MINIMAL)
+# --------------------------------------------------------------------------
+format:
+  reasoning_block:
+    description: "How the agent records thought per iteration."
+    example: |
+      ```yaml
+      gap_reasoning:
+        id: "GR-2025-01-15-001"
+        mode: "extract"
+        scope: "TDD v0 Section 3 vs PDD v1 requirements"
+        tdd_sections_read:
+          - "§3 Server Design"
+        pdd_sections_read:
+          - "§3 Scope Included"
+          - "§8 Networking"
+        assertions:
+          - id: "A-01"
+            statement: "TDD v0 Section 3 doesn't reference subsystem SPEC.md files"
+            evidence:
+              tdd_file: "v0/tdd_<project>_v0.md"
+              tdd_location: "§3 Server Design - no SPEC.md references"
+              pdd_file: "v1/<pdd>_<project>_v1.md"
+              pdd_location: "N/A - implementation detail not in PDD"
+        gaps_proposed:
+          - gap_id: "GAP-1-missing-subsystem-specs"
+            type: "MISSING"
+            description: "TDD v0 Section 3 missing subsystem specification references (SPEC.md files)"
+            tdd_refs: ["§3"]
+            pdd_refs: []
+            delta_relation: "NONE"
+            implementation_spec: "Add references to server/**/SPEC.md files for relevant subsystems"
+            priority: "HIGH"
+            status: "UNREVIEWED"
+            arch_status: "UNRESOLVED"
+      ```
+
+  critique_block:
+    description: "How the agent attacks reasoning."
+    example: |
+      ```yaml
+      gap_critique:
+        id: "GC-2025-01-15-001"
+        target_reasoning_id: "GR-2025-01-15-001"
+        findings:
+          - id: "F-01"
+            type: "MISSING_GAP"
+            description: "TDD v0 doesn't document feature code generation algorithm"
+            severity: "HIGH"
+            tdd_section: "§3 Server Design"
+            pdd_section: "§3 Scope Included (feature system)"
+            suggested_fix:
+              action: "ADD_GAP"
+              new_gap:
+                gap_id: "GAP-2-missing-feature-code-algorithm"
+                type: "MISSING"
+                description: "TDD v0 missing feature code generation algorithm specification"
+                tdd_refs: ["§3"]
+                pdd_refs: ["§3"]
+                delta_relation: "Δ-3-feature-system"
+                implementation_spec: "Algorithm: crypto/rand, generate 6 characters from A-Z0-9 (36 chars), uppercase, check collision against existing features map, retry if collision (max 10 retries), return code"
+                priority: "CRITICAL"
+                status: "UNREVIEWED"
+                arch_status: "UNRESOLVED"
+      ```
+
+# --------------------------------------------------------------------------
+# DECISION RULES
+# --------------------------------------------------------------------------
+decision_framework:
+  when_to_add_gap:
+    - "Implementation algorithm missing from TDD (MUST specify algorithm details)"
+    - "Constant values missing from TDD (MUST specify actual values)"
+    - "Concurrency pattern missing from TDD (MUST specify pattern details)"
+    - "Technical debt in TDD v0 (outdated patterns, broken references, path inconsistencies)"
+    - "Documentation structure issue (missing SPEC.md/API.md references)"
+    - "Implementation detail PDD doesn't specify but TDD should (coordinate transforms, lerp formulas)"
+    - "CRITICAL: Gap must provide NEW information beyond delta analysis"
+
+  when_to_invalidate_gap:
+    - "Gap just says 'missing X' where delta says 'X was added' (redundant)"
+    - "Gap description contradicts TDD or PDD"
+    - "Gap is too vague ('missing algorithm' without specifying algorithm)"
+    - "Gap duplicates delta analysis without adding implementation details"
+    - "Gap lacks actionable implementation_spec"
+
+  when_to_split_gap:
+    - "Multiple distinct implementation details mixed in one entry"
+    - "Gap covers both algorithm and constants (split into separate gaps)"
+
+  when_to_merge_gaps:
+    - "Two gaps describe the same implementation detail from different angles"
+
+  when_to_mark_reviewed:
+    - "Gap includes specific implementation_spec (algorithm, values, patterns)"
+    - "Gap is clearly not duplicating delta analysis"
+    - "Gap is actionable (developer can implement from gap description)"
+
+  when_to_remove_gap:
+    - "Gap completely redundant with delta analysis"
+    - "Gap is too vague and cannot be made specific"
+
+notes:
+  - "Gap agent focuses on TDD completeness, not PDD changes"
+  - "PDD v1 is the target state; TDD v0 is the current state"
+  - "Delta analysis tracks PDD changes; gap analysis tracks TDD implementation gaps"
+  - "CRITICAL: Gap analysis must NOT duplicate delta analysis"
+  - "Gap must provide SPECIFIC implementation details (algorithms, values, patterns)"
+  - "Vague gaps ('missing X') are INVALID - must specify what X is"
+  - "Gap agent should identify implementation details PDD doesn't specify"
+  - "Architect agent uses gap file for TDD improvement work queue"
+  - "Example VALID gap: 'Feature code algorithm: crypto/rand, 6 chars from A-Z0-9, check collision, retry if exists'"
+  - "Example INVALID gap: 'TDD v0 missing feature system' (delta already says feature system was added)"
+
