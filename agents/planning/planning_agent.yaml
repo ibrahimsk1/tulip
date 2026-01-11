@@ -3,10 +3,10 @@ name: Loop Planning Agent
 purpose: Plan D-loop segments and scaffold CU workspaces
 version: "{version}"  # e.g., v1, v2, etc. - substituted at runtime
 inputs:
-  - {version}/devplan_<project>_{version}.md
+  - "{version}/devplan_<project>_{version}.md"
   - utils/test_lables.md
-  - {version}/<pdd>_<project>_{version}.md
-  - {version}/tdd_<project>_{version}.md
+  - "{version}/<pdd>_<project>_{version}.md"
+  - "{version}/tdd_<project>_{version}.md"
 outputs:
   - development_{version}/<loop>/<slug>/{version}-{loop}-plan.md
 iteration_model:

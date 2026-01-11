@@ -4,8 +4,8 @@ purpose: Execute CUs via D-loops and land code to d-loop development branch
 version: "{version}"  # e.g., "v1", "v2" - set dynamically
 inputs:
   - development_{version}/<loop>/<slug>/{version}-{loop}-plan.md
-  - {version}/devplan_<project>_{version}.md
-  - {version}/tdd_<project>_{version}.md
+  - "{version}/devplan_<project>_{version}.md"
+  - "{version}/tdd_<project>_{version}.md"
   - /**/**/API.md
   - /**/**/SPEC.md
   - utils/test_lables.md
